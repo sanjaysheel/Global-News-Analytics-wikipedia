@@ -1,8 +1,12 @@
-name: Deploy to Databricks
+name: Deploy to Databricks and AWS
 
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch to deploy from'
+        required: true
+        default: 'main'
       environment:
         description: 'Target environment'
         required: true
@@ -23,36 +27,75 @@ on:
           - src
 
 jobs:
-  deploy:
+  deploy_databricks:
+    name: Deploy to Databricks
     runs-on: ubuntu-latest
-
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
-    - name: Set up Python and Databricks CLI
-      run: |
-        pip install databricks-cli
-        mkdir -p ~/.databricks
-        echo "[DEFAULT]" > ~/.databricks/config
-        echo "host = $DATABRICKS_HOST" >> ~/.databricks/config
-        echo "token = $DATABRICKS_TOKEN" >> ~/.databricks/config
+      - name: Set up Databricks CLI
+        run: |
+          pip install databricks-cli
+          mkdir -p ~/.databricks
+          echo "[DEFAULT]" > ~/.databricks/config
+          echo "host = $DATABRICKS_HOST" >> ~/.databricks/config
+          echo "token = $DATABRICKS_TOKEN" >> ~/.databricks/config
 
-    - name: Deploy selected folder to Databricks
-      run: |
-        TARGET_ENV=${{ github.event.inputs.environment }}
-        FOLDER=${{ github.event.inputs.folder }}
-        DATABRICKS_PATH="/${TARGET_ENV}/${FOLDER}"
-        
-        echo "Deploying folder '$FOLDER' to environment '$TARGET_ENV' at path '$DATABRICKS_PATH'..."
-        
-        for file in $FOLDER/*.py; do
-          base=$(basename $file)
-          echo "Uploading $file to $DATABRICKS_PATH/$base"
-          databricks workspace import $file $DATABRICKS_PATH/$base --format SOURCE --language PYTHON --overwrite
-        done
+      - name: Deploy selected folder to Databricks
+        run: |
+          TARGET_ENV=${{ github.event.inputs.environment }}
+          FOLDER=${{ github.event.inputs.folder }}
+          DATABRICKS_PATH="/${TARGET_ENV}/${FOLDER}"
 
+          echo "Deploying folder '$FOLDER' from branch '${{ github.event.inputs.branch }}' to environment '$TARGET_ENV' at path '$DATABRICKS_PATH'..."
+
+          shopt -s nullglob
+          FILES=($FOLDER/*.py)
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No Python files found in $FOLDER. Skipping Databricks deployment."
+            exit 0
+          fi
+
+          for file in "${FILES[@]}"; do
+            base=$(basename "$file")
+            echo "Uploading $file to $DATABRICKS_PATH/$base"
+            databricks workspace import "$file" "$DATABRICKS_PATH/$base" --format SOURCE --language PYTHON --overwrite
+          done
+
+  deploy_aws:
+    name: Deploy to AWS S3
+    runs-on: ubuntu-latest
+    needs: deploy_databricks
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+
+      - name: Upload folder to S3
+        run: |
+          FOLDER=${{ github.event.inputs.folder }}
+          ENV=${{ github.event.inputs.environment }}
+          S3_PATH="s3://$S3_BUCKET_NAME/$ENV/$FOLDER/"
+
+          echo "Uploading $FOLDER to $S3_PATH"
+          aws s3 cp $FOLDER $S3_PATH --recursive
