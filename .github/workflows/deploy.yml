@@ -52,7 +52,7 @@ jobs:
         run: |
           TARGET_ENV=${{ github.event.inputs.environment }}
           FOLDER=${{ github.event.inputs.folder }}
-          DATABRICKS_PATH="/${TARGET_ENV}/${FOLDER}"
+          DATABRICKS_PATH="/Users/sanjaysheel1997@gmail.com/${TARGET_ENV}/${FOLDER}"
 
           echo "Deploying folder '$FOLDER' from branch '${{ github.event.inputs.branch }}' to environment '$TARGET_ENV' at path '$DATABRICKS_PATH'..."
 
@@ -69,33 +69,3 @@ jobs:
             echo "Uploading $file to $DATABRICKS_PATH/$base"
             databricks workspace import "$file" "$DATABRICKS_PATH/$base" --format SOURCE --language PYTHON --overwrite
           done
-
-  # deploy_aws:
-  #   name: Deploy to AWS S3
-  #   runs-on: ubuntu-latest
-  #   needs: deploy_databricks
-  #   env:
-  #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #     AWS_REGION: ${{ secrets.AWS_REGION }}
-  #     S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-  #       with:
-  #         ref: ${{ github.event.inputs.branch }}
-
-  #     - name: Install AWS CLI
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y awscli
-
-  #     - name: Upload folder to S3
-  #       run: |
-  #         FOLDER=${{ github.event.inputs.folder }}
-  #         ENV=${{ github.event.inputs.environment }}
-  #         S3_PATH="s3://$S3_BUCKET_NAME/$ENV/$FOLDER/"
-
-  #         echo "Uploading $FOLDER to $S3_PATH"
-  #         aws s3 cp $FOLDER $S3_PATH --recursive
