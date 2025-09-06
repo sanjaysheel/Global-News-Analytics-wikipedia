@@ -1,4 +1,4 @@
-name: Deploy to Databricks and AWS
+name: Deploy to Databricks
 
 on:
   workflow_dispatch:
