@@ -7,6 +7,7 @@
 # MAGIC %run ../src/utils/_databricks_setup
 
 # COMMAND ----------
+
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -39,3 +40,7 @@ for topic_name, topic_url in topics.items():
 if scraped_data:
     save_scraped_data(scraped_data, paths['raw_path'])
     print(f"Saved {len(scraped_data)} items to {paths['raw_path']}")
+
+# COMMAND ----------
+
+import os
