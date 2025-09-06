@@ -1,0 +1,47 @@
+name: Deploy to Databricks
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev, dst, int, prod)'
+        required: true
+        default: 'dev'
+      folder:
+        description: 'Folder to deploy (notebook, src)'
+        required: true
+        default: 'notebook'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python and Databricks CLI
+      run: |
+        pip install databricks-cli
+        mkdir -p ~/.databricks
+        echo "[DEFAULT]" > ~/.databricks/config
+        echo "host = $DATABRICKS_HOST" >> ~/.databricks/config
+        echo "token = $DATABRICKS_TOKEN" >> ~/.databricks/config
+
+    - name: Deploy selected folder to Databricks
+      run: |
+        TARGET_ENV=${{ github.event.inputs.environment }}
+        FOLDER=${{ github.event.inputs.folder }}
+        DATABRICKS_PATH="/${TARGET_ENV}/${FOLDER}"
+
+        echo "Deploying folder '$FOLDER' to environment '$TARGET_ENV' at path '$DATABRICKS_PATH'..."
+
+        for file in $FOLDER/*.py; do
+          base=$(basename $file)
+          echo "Uploading $file to $DATABRICKS_PATH/$base"
+          databricks workspace import $file $DATABRICKS_PATH/$base --format SOURCE --overwrite
+        done
