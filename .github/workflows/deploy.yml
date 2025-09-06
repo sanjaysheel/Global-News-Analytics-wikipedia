@@ -47,11 +47,12 @@ jobs:
         TARGET_ENV=${{ github.event.inputs.environment }}
         FOLDER=${{ github.event.inputs.folder }}
         DATABRICKS_PATH="/${TARGET_ENV}/${FOLDER}"
-
+        
         echo "Deploying folder '$FOLDER' to environment '$TARGET_ENV' at path '$DATABRICKS_PATH'..."
-
+        
         for file in $FOLDER/*.py; do
           base=$(basename $file)
           echo "Uploading $file to $DATABRICKS_PATH/$base"
-          databricks workspace import $file $DATABRICKS_PATH/$base --format SOURCE --overwrite
+          databricks workspace import $file $DATABRICKS_PATH/$base --format SOURCE --language PYTHON --overwrite
         done
+
