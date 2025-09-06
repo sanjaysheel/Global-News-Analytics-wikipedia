@@ -4,13 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Target environment (dev, dst, int, prod)'
+        description: 'Target environment'
         required: true
         default: 'dev'
+        type: choice
+        options:
+          - dev
+          - dst
+          - int
+          - prod
       folder:
-        description: 'Folder to deploy (notebook, src)'
+        description: 'Folder to deploy'
         required: true
         default: 'notebook'
+        type: choice
+        options:
+          - notebook
+          - src
 
 jobs:
   deploy:
